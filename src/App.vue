@@ -8,8 +8,8 @@
 -->
 <template>
   <nav>
-    <router-link to="/">Ho2me</router-link> |
-    <router-link to="/work">About</router-link>
+    <router-link to="/">Intro</router-link>
+    <router-link to="/work">Features</router-link>
   </nav>
   <router-view/>
 </template>
