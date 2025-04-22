@@ -1,100 +1,141 @@
 <template>
-  <div>
-    <div class="upload-container">
-      <div>
+  <!-- 占位元素 -->
+  <div class="nav-placeholder"></div>
+  <div class="work-container">
+    <!-- 左侧上传区域 -->
+    <div class="left-section">
+      <div class="upload-section">
         <el-upload
           class="upload-demo"
           drag
           action=""
           multiple
           :auto-upload="false"
-          :show-file-list="false"
+          :show-file-list="true"
           accept="image/jpeg, image/png"
           :on-change="handleFileChange"
           :before-upload="beforeUpload"
         >
           <i class="el-icon-upload"></i>
           <div class="el-upload__text">将文件拖到此处，或<em>点击上传</em></div>
-          <div class="el-upload__tip">上传任意格式图片</div>
+          <div class="el-upload__tip">支持 JPG、PNG 格式图片</div>
         </el-upload>
-        <p></p>
-        <el-button @click="callQwen" :disabled="!selectedFile || isLoading">
+
+        <el-input 
+          v-model="inputValue" 
+          type="textarea" 
+          :rows="6" 
+          placeholder="请输入用例描述或角色描述"
+          class="description-input"
+        ></el-input>
+
+        <el-button 
+          type="primary" 
+          class="call-model-btn" 
+          @click="callQwen" 
+          :disabled="!selectedFile || isLoading"
+        >
           {{ isLoading ? '正在调用大模型...' : '调用大模型' }}
         </el-button>
+
+        <div class="effort-section">
+          <el-button type="success" @click="showEffort" class="calculate-btn">
+            计算工作量
+          </el-button>
+          <div class="effort-result" v-if="actorsValueSum">
+            预计工作量：<span class="effort-value">{{ actorsValueSum.toFixed(1) }}</span> 人*时
+          </div>
+        </div>
       </div>
-      <div v-if="imageUrl" class="upload-preview">
-        <img :src="imageUrl" alt="预览图">
-        <p>图片预览</p>
-      </div>
-      <el-input v-model="inputValue" type="textarea" :rows="6" placeholder="请输入用例描述或角色描述"></el-input>
     </div>
-    <!--
-    <input type="file" @change="handleFileChange" accept="image/*">
-    <img v-if="imageUrl" :src="imageUrl" alt="Uploaded Image" style="max-width: 200px; max-height: 200px;">
-    -->
-    <!-- 加载圈 -->
-    <div v-if="isLoading" class="loading-spinner"></div>
-    <!-- 使用 v-html 指令渲染包含 <br> 标签的内容，添加显示框 -->
-    <!--
-    <div v-if="responseContent" class="response-box" v-html="responseContentWithBreaks"></div>
-    -->
-  </div>
-  <div>
-    <el-form label-width="120px">
-      <el-form-item label="Actor 数量">
-        <el-input v-model.number="data.actor" type="number" min="0"></el-input>
-      </el-form-item>
-      <el-form-item label="UseCase 数量">
-        <el-input v-model.number="data.useCase" type="number" min="0"></el-input>
-      </el-form-item>
-    </el-form>
-    <h3>Actors</h3>
-    <el-form>
-      <el-form-item v-for="(item, index) in data.actors" :key="'actor-' + index" :label="index+1+' '+data.actors[index]">
-        <el-select v-model="data.actors_value[index]" placeholder="请选择">
-          <el-option label="用户通过API与系统交互" :value="1"></el-option>
-          <el-option label="用户通过协议与系统交互" :value="2"></el-option>
-          <el-option label="用户通过GUI与系统交互" :value="3"></el-option>
-        </el-select>
-      </el-form-item>
-    </el-form>
 
-    <h3>UseCases</h3>
-    <el-form>
-      <el-form-item v-for="(item, index) in data.useCases" :key="'usecase-' + index" :label="index+1+' '+data.useCases[index]">
-        <el-select v-model="data.useCases_value[index]" placeholder="请选择">
-          <el-option label="事务/场景个数为1~3" :value="5"></el-option>
-          <el-option label="事务/场景个数为4~7" :value="10"></el-option>
-          <el-option label="事务/场景个数>7" :value="15"></el-option>
-        </el-select>
-      </el-form-item>
-    </el-form>
+    <!-- 右侧表单区域 -->
+    <div class="right-section">
+      <div class="form-section">
+        <h2 class="section-title">基础信息</h2>
+        <el-form label-width="120px" class="basic-form">
+          <el-form-item label="Actor 数量">
+            <el-input v-model.number="data.actor" type="number" min="0"></el-input>
+          </el-form-item>
+          <el-form-item label="UseCase 数量">
+            <el-input v-model.number="data.useCase" type="number" min="0"></el-input>
+          </el-form-item>
+        </el-form>
 
-    <h3>TCF 因子</h3>
-    <el-form>
-      <el-form-item v-for="(item, index) in data.TCF_value" :key="'tcf-' + index" :label="getTCFDescription(index)">
-        <el-select v-model="data.TCF_value[index]" placeholder="请选择">
-          <el-option label="0" :value="0"></el-option>
-          <el-option label="3" :value="3"></el-option>
-          <el-option label="5" :value="5"></el-option>
-        </el-select>
-      </el-form-item>
-    </el-form>
+        <h2 class="section-title">Actors 配置</h2>
+        <el-form class="actors-form">
+          <el-form-item 
+            v-for="(item, index) in data.actors" 
+            :key="'actor-' + index" 
+            :label="index+1+' '+data.actors[index]"
+          >
+            <el-select v-model="data.actors_value[index]" placeholder="请选择交互方式" class="full-width">
+              <el-option label="用户通过API与系统交互 (1)" :value="1"></el-option>
+              <el-option label="用户通过协议与系统交互 (2)" :value="2"></el-option>
+              <el-option label="用户通过GUI与系统交互 (3)" :value="3"></el-option>
+            </el-select>
+          </el-form-item>
+        </el-form>
 
-    <h3>ECF 因子</h3>
-    <el-form>
-      <el-form-item v-for="(item, index) in data.ECF_value" :key="'ecf-' + index" :label="getECFDescription(index)">
-        <el-select v-model="data.ECF_value[index]" placeholder="请选择">
-          <el-option v-for="option in getECFOptions(index)" :key="option.value" :label="option.label" :value="option.value"></el-option>
-        </el-select>
-      </el-form-item>
-    </el-form>
-    <!--
-    <el-button @click="printTCF">打印TCF</el-button>
-    <el-button @click="printECF">打印ECF</el-button>
-    -->
-    <el-button @click="showEffort">显示工作量（单位：人*时）</el-button>
-    <div class="sum-display">{{ actorsValueSum }}</div>
+        <h2 class="section-title">UseCases 配置</h2>
+        <el-form class="usecases-form">
+          <el-form-item 
+            v-for="(item, index) in data.useCases" 
+            :key="'usecase-' + index" 
+            :label="index+1+' '+data.useCases[index]"
+          >
+            <el-select v-model="data.useCases_value[index]" placeholder="请选择复杂度" class="full-width">
+              <el-option label="事务/场景个数为1~3 (5)" :value="5"></el-option>
+              <el-option label="事务/场景个数为4~7 (10)" :value="10"></el-option>
+              <el-option label="事务/场景个数>7 (15)" :value="15"></el-option>
+            </el-select>
+          </el-form-item>
+        </el-form>
+
+        <h2 class="section-title">TCF 因子配置</h2>
+        <el-form class="tcf-form">
+          <el-form-item 
+            v-for="(item, index) in data.TCF_value" 
+            :key="'tcf-' + index" 
+            :label="getTCFDescription(index)"
+          >
+            <el-select v-model="data.TCF_value[index]" placeholder="请选择影响程度" class="full-width">
+              <el-option label="无关 (0)" :value="0"></el-option>
+              <el-option label="一般 (3)" :value="3"></el-option>
+              <el-option label="很强 (5)" :value="5"></el-option>
+            </el-select>
+          </el-form-item>
+        </el-form>
+
+        <h2 class="section-title">ECF 因子配置</h2>
+        <el-form class="ecf-form">
+          <el-form-item 
+            v-for="(item, index) in data.ECF_value" 
+            :key="'ecf-' + index" 
+            :label="getECFDescription(index)"
+          >
+            <el-select 
+              v-model="data.ECF_value[index]" 
+              placeholder="请选择程度" 
+              class="full-width"
+            >
+              <el-option 
+                v-for="option in getECFOptions(index)" 
+                :key="option.value" 
+                :label="option.label" 
+                :value="option.value"
+              ></el-option>
+            </el-select>
+          </el-form-item>
+        </el-form>
+      </div>
+    </div>
+
+    <!-- 加载动画 -->
+    <div v-if="isLoading" class="loading-overlay">
+      <div class="loading-spinner"></div>
+      <p>正在处理中...</p>
+    </div>
   </div>
 </template>
 
@@ -259,11 +300,7 @@ const MODEL = 'qwen-vl-max-latest';
 
 const responseContent = ref('');
 const selectedFile = ref(null);
-// 新增一个响应式变量用于存储图片的 DataURL
-const imageUrl = ref('');
-// 新增一个响应式变量用于存储替换换行符后的内容
 const responseContentWithBreaks = ref('');
-// 新增一个响应式变量用于控制加载圈的显示
 const isLoading = ref(false);
 
 const handleFileChange = (file) => {
@@ -273,14 +310,6 @@ const handleFileChange = (file) => {
   }
 
   selectedFile.value = file.raw; // 获取原始 File 对象
-  const reader = new FileReader();
-  reader.readAsDataURL(file.raw); // 读取文件数据
-  reader.onload = () => {
-    imageUrl.value = reader.result; // 赋值 DataURL 进行预览
-  };
-  reader.onerror = (error) => {
-    console.error("读取图片出错:", error);
-  };
 };
 
 const encodeImage = (file) => {
@@ -458,38 +487,162 @@ const showEffort = () => {
 </script>
 
 <style scoped>
-.upload-container {
+.work-container {
   display: flex;
-  justify-content: center; /* 让整个内容居中 */
-  align-items: center;
-  gap: 20px; /* 上传区域和预览图之间的间距 */
+  gap: 30px;
+  padding: 20px;
+  min-height: 100vh;
+  background-color: #f5f7fa;
+  position: relative;
 }
-.upload-preview img {
-  max-width: 200px;
+
+.nav-placeholder {
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 40px;
+}
+
+.left-section {
+  flex: 1;
+  max-width: 500px;
+  position: sticky;
+  top: 80px;
+  height: fit-content;
+}
+
+.right-section {
+  flex: 2;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1);
+  padding: 20px;
+  /*max-height: calc(100vh - 40px);*/
+  overflow-y: auto;
+}
+
+.upload-section {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1);
+}
+
+:deep(.el-upload-dragger) {
+  width: 100%;
+}
+
+:deep(.el-upload-list) {
+  margin-top: 20px;
+}
+
+.preview-section {
+  margin-top: 20px;
+  text-align: center;
+}
+
+.preview-section img {
+  max-width: 100%;
+  max-height: 300px;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1);
+}
+
+.description-input {
+  margin-top: 20px;
+}
+
+.call-model-btn {
+  width: 100%;
+  margin-top: 20px;
+}
+
+.section-title {
+  color: #303133;
+  margin: 20px 0;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #409EFF;
+}
+
+.basic-form,
+.actors-form,
+.usecases-form,
+.tcf-form,
+.ecf-form {
+  margin-bottom: 30px;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.effort-section {
+  text-align: center;
+  margin-top: 30px;
+  padding: 20px;
+  background: #f8f9fa;
   border-radius: 8px;
 }
 
-.response-box {
-  border: 1px solid #ccc;
-  padding: 10px;
-  margin-top: 10px;
-  text-align: left;
-  white-space: pre-line; /* 保留换行符 */
+.calculate-btn {
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.effort-result {
+  font-size: 18px;
+  color: #303133;
+}
+
+.effort-value {
+  color: #409EFF;
+  font-weight: bold;
+  font-size: 24px;
+}
+
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
 }
 
 .loading-spinner {
   border: 4px solid rgba(0, 0, 0, 0.1);
-  border-left-color: #000;
+  border-left-color: #409EFF;
   border-radius: 50%;
-  width: 20px;
-  height: 20px;
+  width: 40px;
+  height: 40px;
   animation: spin 1s linear infinite;
-  margin: 10px auto;
+  margin-bottom: 10px;
 }
 
 @keyframes spin {
   to {
     transform: rotate(360deg);
   }
+}
+
+:deep(.el-form-item__label) {
+  font-weight: 500;
+}
+
+:deep(.el-select) {
+  width: 100%;
+}
+
+:deep(.el-input__inner) {
+  border-radius: 4px;
+}
+
+:deep(.el-button) {
+  border-radius: 4px;
 }
 </style>
