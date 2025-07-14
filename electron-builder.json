@@ -1,0 +1,25 @@
+{
+  "appId": "com.usecase.analyzer",
+  "productName": "用例分析工具",
+  "directories": {
+    "output": "dist_electron"
+  },
+  "win": {
+    "target": [
+      {
+        "target": "nsis",
+        "arch": [
+          "x64"
+        ]
+      }
+    ],
+    "icon": "public/icon.ico"
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "shortcutName": "用例分析工具"
+  }
+} 

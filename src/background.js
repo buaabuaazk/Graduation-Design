@@ -1,8 +1,18 @@
+/*
+ * @Author: buaabuaazk 2447230029@qq.com
+ * @Date: 2025-03-02 16:23:46
+ * @LastEditors: buaabuaazk 2447230029@qq.com
+ * @LastEditTime: 2025-04-24 19:25:24
+ * @FilePath: \my-vue-electron-app\src\background.js
+ * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
+ */
 'use strict'
 
-import { app, protocol, BrowserWindow } from 'electron'
-import { createProtocol } from 'vue-cli-plugin-electron-builder/lib'
-import installExtension, { VUEJS3_DEVTOOLS } from 'electron-devtools-installer'
+const { app, protocol, BrowserWindow } = require('electron')
+const { createProtocol } = require('vue-cli-plugin-electron-builder/lib')
+const installExtension = require('electron-devtools-installer')
+const VUEJS3_DEVTOOLS = require('electron-devtools-installer').VUEJS3_DEVTOOLS
+
 const isDevelopment = process.env.NODE_ENV !== 'production'
 
 // Scheme must be registered before the app is ready
@@ -16,11 +26,10 @@ async function createWindow() {
     width: 800,
     height: 600,
     webPreferences: {
-      
-      // Use pluginOptions.nodeIntegration, leave this alone
-      // See nklayman.github.io/vue-cli-plugin-electron-builder/guide/security.html#node-integration for more info
-      nodeIntegration: process.env.ELECTRON_NODE_INTEGRATION,
-      contextIsolation: !process.env.ELECTRON_NODE_INTEGRATION
+      nodeIntegration: true,
+      contextIsolation: false,
+      webSecurity: true,
+      enableRemoteModule: true
     }
   })
 
@@ -31,8 +40,23 @@ async function createWindow() {
   } else {
     createProtocol('app')
     // Load the index.html when not in development
-    win.loadURL('app://./index.html')
+    try {
+      await win.loadURL('app://./index.html')
+    } catch (error) {
+      console.error('Failed to load app URL:', error)
+      // 如果加载失败，尝试直接加载文件
+      try {
+        await win.loadFile('./dist_electron/bundled/index.html')
+      } catch (err) {
+        console.error('Failed to load file directly:', err)
+      }
+    }
   }
+
+  // 添加错误处理
+  win.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+    console.error('Failed to load:', errorCode, errorDescription)
+  })
 }
 
 // Quit when all windows are closed.
